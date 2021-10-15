@@ -1,0 +1,31 @@
+.dind: &dind
+  services:
+    - domain/base/image/docker:19.03.5-dind
+  variables:
+    CI_TEST: enabled
+    DOCKER_HOST: "tcp://localhost:2375"
+    DOCKER_TLS_CERTDIR: ""
+
+.sonar-analysis:
+  stage: Sonar Analysis
+  image: domain/fulfillment/devops/base_images/sonar
+  extends: .dind
+  script:
+    - dotnet restore --source http://nexus-domain:8081/repository/nuget-group/ ./src/Xeon.SupplierReturnApi.csproj
+    - dotnet restore --source http://nexus-domain:8081/repository/nuget-group/ ./tests/Xeon.SupplierReturnApi.Tests.csproj
+    - dotnet test /p:CollectCoverage=true  /p:CoverletOutputFormat=opencover --no-restore
+    - dotnet sonarscanner begin 
+      /d:sonar.host.url=$SONAR3_HOST
+      /d:sonar.login=$SONAR3_TOKEN
+      /k:$SONAR_PROJECT_NAME 
+      /n:$SONAR_PROJECT_NAME 
+      /d:sonar.qualitygate.wait=true
+      /v:1 
+      /d:sonar.cs.opencover.reportsPaths="./tests//coverage.opencover.xml"
+    - dotnet build ./src/Xeon.SupplierReturnApi.csproj
+    - dotnet sonarscanner end 
+      /d:sonar.login=$SONAR3_TOKEN
+  allow_failure: false
+  coverage: /Total   \| \d+.\d+%/
+  variables:
+    SONAR_PROJECT_NAME: $CI_PROJECT_NAME-$CI_BUILD_REF_NAME

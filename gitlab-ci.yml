@@ -1,0 +1,10 @@
+stages:
+  - Run
+
+Run:
+  stage: Run
+  image: domain/base/image/alpine:3.12.0
+  only:
+    - master
+  script:
+    - sh sonar-badges.sh
